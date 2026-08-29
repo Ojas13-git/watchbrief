@@ -1,0 +1,17 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# build
+dist
+
+# env
+.env
+.env*
+
+# misc
+.DS_Store
+*.tsbuildinfo
+
+# prisma generated client
+/src/generated/prisma
