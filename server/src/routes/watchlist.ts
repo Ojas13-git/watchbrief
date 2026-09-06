@@ -30,7 +30,7 @@ watchlistRouter.get("/", async (req: AuthedRequest, res, next) => {
       ...(q ? { symbol: { contains: q, mode: "insensitive" as const } } : {}),
     };
 
-    const [items, total, watchlistCount] = await prisma.$transaction([
+    const [items, total, watchlistCount] = await Promise.all([ 
       prisma.watchlistItem.findMany({
         where,
         orderBy: { createdAt: "asc" },
