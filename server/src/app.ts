@@ -3,6 +3,7 @@ import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import { requireAuth, type AuthedRequest } from "./middleware/requireAuth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { watchlistRouter } from "./routes/watchlist.js";
 
 export function createApp() {
   const app = express();
@@ -24,8 +25,7 @@ export function createApp() {
     res.json({ userId: req.userId });
   });
 
-  // routes mounted next:
-  // app.use("/api/watchlist", watchlistRouter);
+  app.use("/api/watchlist", watchlistRouter);
   // app.use("/api/brief", briefRouter);
   // app.use("/api/briefs", briefsRouter);
 
