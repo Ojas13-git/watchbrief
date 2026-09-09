@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApiFetch } from "@/lib/use-api-fetch";
 
 type WatchlistItem = {
@@ -34,6 +34,10 @@ export function HomeClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [briefText, setBriefText] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -95,14 +99,13 @@ export function HomeClient() {
         body: JSON.stringify({ symbol: symbolInput.trim() }),
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
-if (!res.ok) {
-  throw new Error(
-    typeof body.error === "string" && body.error
-      ? body.error
-      : `Failed to add watchlist (status: ${res.status})`,
-  );
-}
-
+      if (!res.ok) {
+        throw new Error(
+          typeof body.error === "string" && body.error
+            ? body.error
+            : `Failed to add watchlist (status: ${res.status})`,
+        );
+      }
 
       setSymbolInput("");
       await load();
@@ -122,13 +125,13 @@ if (!res.ok) {
         method: "DELETE",
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
-if (!res.ok) {
-  throw new Error(
-    typeof body.error === "string" && body.error
-      ? body.error
-      : `Failed to delete watchlist (status: ${res.status})`,
-  );
-}
+      if (!res.ok) {
+        throw new Error(
+          typeof body.error === "string" && body.error
+            ? body.error
+            : `Failed to delete watchlist (status: ${res.status})`,
+        );
+      }
       await load();
     } catch (err) {
       setError(
@@ -137,6 +140,59 @@ if (!res.ok) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onGenerate() {
+    if (generating || watchlistCount === 0) return;
+
+    setGenerating(true);
+    setError(null);
+    setBriefText("");
+
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    try {
+      const res = await apiFetch("/api/brief", {
+        method: "POST",
+        signal: ac.signal,
+        body: JSON.stringify({}),
+      });
+
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(
+          typeof body.error === "string" && body.error
+            ? body.error
+            : `Generate failed (status: ${res.status})`,
+        );
+      }
+
+      if(!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      while(true){
+        const {done, value} = await reader.read();
+        if(done) break;
+        const chunk = decoder.decode(value, {stream: true});
+        setBriefText((prev)=> prev + chunk);
+      }
+    } catch (err) {
+      if(err instanceof DOMException && err.name === "AbortError"){
+        setError("Generating cancelled");
+      }
+      else{
+        setError(err instanceof Error ? err.message : "Failed to generate brief");
+      }
+    } finally {
+      abortRef.current = null;
+      setGenerating(false);
+    }
+  }
+
+  function onAbortGenerate(){
+    abortRef.current?.abort();
   }
 
   return (
@@ -158,7 +214,9 @@ if (!res.ok) {
       </label>
       {!loading && items.length === 0 ? (
         <p className="text-sm opacity-60">
-          {debouncedQ ? "No matches for this search." : "No tickers yet. Add an NSE symbol."}
+          {debouncedQ
+            ? "No matches for this search."
+            : "No tickers yet. Add an NSE symbol."}
         </p>
       ) : null}
       <form onSubmit={onAdd} className="flex gap-2">
@@ -204,26 +262,28 @@ if (!res.ok) {
           >
             <span className="font-mono text-sm">{item.symbol}</span>
             <button
-            onClick={()=> onDelete(item.id)}
-            disabled={busy}
-            aria-label="Delete from watchlist"
+              onClick={() => onDelete(item.id)}
+              disabled={busy}
+              aria-label="Delete from watchlist"
             >
-             Delete
+              Delete
             </button>
           </li>
         ))}
       </ul>
 
       <div className="flex items-center justify-between gap-3 text-sm">
-        <button type="button" onClick={(p)=> setPage(Math.max(1,page-1))}
-            disabled={page <= 1 || loading}
-            className="rounded border px-3 py-1 disabled:opacity-40"
+        <button
+          type="button"
+          onClick={(p) => setPage(Math.max(1, page - 1))}
+          disabled={page <= 1 || loading}
+          className="rounded border px-3 py-1 disabled:opacity-40"
         >
-            Prev
+          Prev
         </button>
 
         <span className="opacity-70">
-            Page {page} of {pageCount}
+          Page {page} of {pageCount}
         </span>
 
         <button
@@ -235,6 +295,39 @@ if (!res.ok) {
           Next
         </button>
       </div>
+
+      <section className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={generating || watchlistCount === 0 || busy}
+            onClick={()=> void onGenerate()}
+            className="rounded border px-3 py-1 disabled:opacity-40"
+          >
+            {generating ? "Generating…" : "Generate Brief"}
+          </button>
+          <button
+            type="button"
+            disabled={!generating}
+            onClick={onAbortGenerate}
+            className="rounded border px-3 py-1 disabled:opacity-40"
+          >
+            Stop
+          </button>
+        </div>
+        {watchlistCount === 0 ? (
+          <p className="text-xs opacity-70">Add at least one ticker to generate.</p> 
+        ): 
+        (
+          <p className="text-xs opacity-70">
+            Uses your full watchlist ({watchlistCount}), not the current search page.
+          </p>
+        )}
+
+        {briefText? (
+          <pre className="text-sm whitespace-pre-wrap border p-3">{briefText}</pre>
+        ): null}
+      </section>
     </main>
   );
 }

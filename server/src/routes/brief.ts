@@ -7,7 +7,7 @@ import { requireAuth, type AuthedRequest } from "../middleware/requireAuth.js";
 export const briefRouter = Router();
 briefRouter.use(requireAuth);
 
-const MODEL_ID = "llama-3.1-8b-instant";
+const MODEL_ID = "openai/gpt-oss-20b";
 const MAX_WATCHLIST = 10;
 
 const SYSTEM = `You are WatchBrief, a neutral explainer of Indian NSE-listed companies.
