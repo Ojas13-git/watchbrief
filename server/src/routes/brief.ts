@@ -16,7 +16,9 @@ Rules:
 - Do not invent live prices, LTP, % change, or “today’s” quotes. You have no market data feed.
 - Do not claim to be SEBI-registered or a research analyst.
 - If unsure, say so. Keep it concise (short paragraphs + bullets).
-- Write for a retail reader in India.`;
+- Write for a retail reader in India.
+- Format in GitHub-flavored Markdown: headings, bullets, bold, tables if useful.
+- Never emit HTML tags ('<br>', '<div>', '<p>'). Use Markdown line breaks and tables only.`;
 
 briefRouter.post("/", async(req: AuthedRequest, res, next)=> {
       try {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApiFetch } from "@/lib/use-api-fetch";
+import { BriefMarkdown } from "@/components/brief-markdown";
 
 type WatchlistItem = {
   id: string;
@@ -325,7 +326,7 @@ export function HomeClient() {
         )}
 
         {briefText? (
-          <pre className="text-sm whitespace-pre-wrap border p-3">{briefText}</pre>
+        <BriefMarkdown text={briefText} />
         ): null}
       </section>
     </main>
