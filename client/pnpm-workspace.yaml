@@ -1,0 +1,5 @@
+# pnpm 11+ project settings (package.json#pnpm is ignored)
+trustLockfile: true
+confirmModulesPurge: false
+allowBuilds:
+  unrs-resolver: true
