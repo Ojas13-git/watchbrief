@@ -5,6 +5,7 @@ import { requireAuth, type AuthedRequest } from "./middleware/requireAuth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { watchlistRouter } from "./routes/watchlist.js";
 import { briefRouter } from "./routes/brief.js";
+import { briefsRouter } from "./routes/briefs.js";
 
 export function createApp() {
   const app = express();
@@ -28,7 +29,7 @@ export function createApp() {
 
   app.use("/api/watchlist", watchlistRouter);
   app.use("/api/brief", briefRouter);
-  // app.use("/api/briefs", briefsRouter);
+  app.use("/api/briefs", briefsRouter);
 
   app.use(errorHandler);
 

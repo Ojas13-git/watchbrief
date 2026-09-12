@@ -4,6 +4,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useApiFetch } from "@/lib/use-api-fetch";
 import { BriefMarkdown } from "@/components/brief-markdown";
 
+type BriefRow = {
+  id: string;
+  userId: string;
+  symbols: string;
+  content: string;
+  model: string;
+  createdAt: string;
+};
+
+type BriefsResponse = {
+  briefs: BriefRow[];
+  page: number;
+  pageSize: number;
+  total: number;
+  pageCount: number;
+};
+
 type WatchlistItem = {
   id: string;
   userId: string;
@@ -35,9 +52,17 @@ export function HomeClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
   const [briefText, setBriefText] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [historyQ, setHistoryQ] = useState("");
+  const [debouncedHistoryQ, setDebouncedHistoryQ] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyPageSize] = useState(5);
+  const [briefs, setBriefs] = useState<BriefRow[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyPageCount, setHistoryPageCount] = useState(1);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -50,6 +75,50 @@ export function HomeClient() {
       clearTimeout(t);
     };
   }, [q]);
+
+  useEffect(()=> {
+    const t = setTimeout(()=> {
+      setDebouncedHistoryQ(historyQ.trim());
+      setHistoryPage(1);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [historyQ])
+
+
+  const loadHistory = useCallback(async ()=> {
+    setHistoryLoading(true);
+    try {
+      const params = new URLSearchParams({
+        q: debouncedHistoryQ,
+        page: String(historyPage),
+        pageSize: String(historyPageSize),
+
+      })
+        const res = await apiFetch(`/api/briefs?${params.toString()}`);
+        
+        if(!res.ok){
+          const body = (await res.json().catch(()=> ({}))) as { error?: string };
+          throw new Error(
+            typeof body.error === "string" && body.error
+              ? body.error
+              : `Failed to load briefs (status: ${res.status})`,
+          )
+        }
+
+        const data = (await res.json()) as BriefsResponse;
+        setBriefs(data.briefs);
+        setHistoryTotal(data.total);
+        setHistoryPageCount(data.pageCount)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load briefs");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [apiFetch, debouncedHistoryQ, historyPage, historyPageSize]);
+
+  useEffect(()=> {
+    void loadHistory();
+  }, [debouncedHistoryQ, historyPage, historyPageSize]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -179,6 +248,7 @@ export function HomeClient() {
         const chunk = decoder.decode(value, {stream: true});
         setBriefText((prev)=> prev + chunk);
       }
+      await loadHistory();
     } catch (err) {
       if(err instanceof DOMException && err.name === "AbortError"){
         setError("Generating cancelled");
@@ -328,6 +398,63 @@ export function HomeClient() {
         {briefText? (
         <BriefMarkdown text={briefText} />
         ): null}
+      </section>
+
+      <section className="flex flex-col gap-3 border-t pt-6">
+        <h2 className="text-lg font-semibold">History</h2>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="opacity-70">Search briefs</span>
+          <input
+            value={historyQ}
+            onChange={(e) => setHistoryQ(e.target.value)}
+            placeholder="Symbols or text…"
+            className="rounded border px-3 py-2 text-sm"
+          />
+        </label>
+        <p className="text-sm opacity-60">
+          {historyLoading
+            ? "Loading history…"
+            : `${historyTotal} brief(s)`}
+        </p>
+        {!historyLoading && briefs.length === 0 ? (
+          <p className="text-sm opacity-60">
+            {debouncedHistoryQ
+              ? "No matching briefs."
+              : "No briefs yet. Generate one."}
+          </p>
+        ) : null}
+        <ul className="flex flex-col gap-4">
+          {briefs.map((row) => (
+            <li key={row.id} className="flex flex-col gap-2 rounded border p-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs opacity-70">
+                <span className="font-mono">{row.symbols}</span>
+                <span>{new Date(row.createdAt).toLocaleString()}</span>
+              </div>
+              <BriefMarkdown text={row.content} />
+            </li>
+          ))}
+        </ul>
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <button
+            type="button"
+            disabled={historyPage <= 1 || historyLoading}
+            onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+            className="rounded border px-3 py-1 disabled:opacity-40"
+          >
+            Prev
+          </button>
+          <span className="opacity-70">
+            Page {historyPage} of {historyPageCount}
+          </span>
+          <button
+            type="button"
+            disabled={historyPage >= historyPageCount || historyLoading}
+            onClick={() => setHistoryPage((p) => p + 1)}
+            className="rounded border px-3 py-1 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
       </section>
     </main>
   );
