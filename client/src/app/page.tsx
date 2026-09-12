@@ -1,7 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
-import { HomeClient } from "./home-client";
+import { LandingPage } from "@/components/landing/landing-page";
 
-export default async function Page() {
-  await auth.protect();
-  return <HomeClient />;
+export default function Page() {
+  return <LandingPage />;
 }

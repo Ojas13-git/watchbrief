@@ -1,55 +1,40 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-import {
-  ClerkProvider,
-  Show,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/nextjs";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "WatchBrief - NSE India",
-  description: "Personal NSE watchlist briefs. Not investment advice.",
+  title: "WatchBrief — NSE research desk",
+  description:
+    "Personal NSE watchlist briefs. Calm AI overviews. Not investment advice.",
 };
-export default function RootLayout({
-  children,
-}: LayoutProps<"/">) {
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plexSans.variable} ${newsreader.variable} ${plexMono.variable} h-full antialiased`}
     >
-      <body>
-        <ClerkProvider>
-          <header className="flex h-16 items-center justify-end gap-4 p-4">
-            <Show when="signed-out">
-              <SignInButton />
-              <SignUpButton>
-                <button className="h-10 cursor-pointer rounded-full bg-[#6c47ff] px-4 text-sm font-medium text-white sm:h-12 sm:px-5 sm:text-base">
-                  Sign Up
-                </button>
-              </SignUpButton>
-            </Show>
-
-            <Show when="signed-in">
-              <UserButton />
-            </Show>
-          </header>
-
-          {children}
-        </ClerkProvider>
+      <body className="min-h-full font-sans">
+        <ClerkProvider>{children}</ClerkProvider>
       </body>
     </html>
   );

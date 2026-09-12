@@ -2,40 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApiFetch } from "@/lib/use-api-fetch";
-import { BriefMarkdown } from "@/components/brief-markdown";
-
-type BriefRow = {
-  id: string;
-  userId: string;
-  symbols: string;
-  content: string;
-  model: string;
-  createdAt: string;
-};
-
-type BriefsResponse = {
-  briefs: BriefRow[];
-  page: number;
-  pageSize: number;
-  total: number;
-  pageCount: number;
-};
-
-type WatchlistItem = {
-  id: string;
-  userId: string;
-  symbol: string;
-  createdAt: string;
-};
-
-type WatchlistResponse = {
-  items: WatchlistItem[];
-  page: number;
-  pageSize: number;
-  total: number;
-  pageCount: number;
-  watchlistCount: number;
-};
+import { AppHeader } from "@/components/app/app-header";
+import { WatchlistPanel } from "@/components/app/watchlist-panel";
+import { GeneratePanel } from "@/components/app/generate-panel";
+import { HistoryPanel } from "@/components/app/history-panel";
+import type {
+  BriefRow,
+  BriefsResponse,
+  WatchlistItem,
+  WatchlistResponse,
+} from "@/lib/types";
 
 export function HomeClient() {
   const apiFetch = useApiFetch();
@@ -70,45 +46,38 @@ export function HomeClient() {
       setDebouncedQ(q.trim());
       setPage(1);
     }, 500);
-
-    return () => {
-      clearTimeout(t);
-    };
+    return () => clearTimeout(t);
   }, [q]);
 
-  useEffect(()=> {
-    const t = setTimeout(()=> {
+  useEffect(() => {
+    const t = setTimeout(() => {
       setDebouncedHistoryQ(historyQ.trim());
       setHistoryPage(1);
     }, 500);
     return () => clearTimeout(t);
-  }, [historyQ])
+  }, [historyQ]);
 
-
-  const loadHistory = useCallback(async ()=> {
+  const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
     try {
       const params = new URLSearchParams({
         q: debouncedHistoryQ,
         page: String(historyPage),
         pageSize: String(historyPageSize),
-
-      })
-        const res = await apiFetch(`/api/briefs?${params.toString()}`);
-        
-        if(!res.ok){
-          const body = (await res.json().catch(()=> ({}))) as { error?: string };
-          throw new Error(
-            typeof body.error === "string" && body.error
-              ? body.error
-              : `Failed to load briefs (status: ${res.status})`,
-          )
-        }
-
-        const data = (await res.json()) as BriefsResponse;
-        setBriefs(data.briefs);
-        setHistoryTotal(data.total);
-        setHistoryPageCount(data.pageCount)
+      });
+      const res = await apiFetch(`/api/briefs?${params.toString()}`);
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(
+          typeof body.error === "string" && body.error
+            ? body.error
+            : `Failed to load briefs (status: ${res.status})`,
+        );
+      }
+      const data = (await res.json()) as BriefsResponse;
+      setBriefs(data.briefs);
+      setHistoryTotal(data.total);
+      setHistoryPageCount(data.pageCount);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load briefs");
     } finally {
@@ -116,14 +85,13 @@ export function HomeClient() {
     }
   }, [apiFetch, debouncedHistoryQ, historyPage, historyPageSize]);
 
-  useEffect(()=> {
+  useEffect(() => {
     void loadHistory();
   }, [debouncedHistoryQ, historyPage, historyPageSize]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
       const params = new URLSearchParams({
         q: debouncedQ,
@@ -139,16 +107,13 @@ export function HomeClient() {
             : `Failed to load watchlist (status: ${res.status})`,
         );
       }
-
       const data = (await res.json()) as WatchlistResponse;
       setItems(data.items);
       setTotal(data.total);
       setPageCount(data.pageCount);
       setWatchlistCount(data.watchlistCount);
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Failed to load watchlist",
-      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load watchlist");
     } finally {
       setLoading(false);
     }
@@ -176,7 +141,6 @@ export function HomeClient() {
             : `Failed to add watchlist (status: ${res.status})`,
         );
       }
-
       setSymbolInput("");
       await load();
     } catch (err) {
@@ -191,9 +155,7 @@ export function HomeClient() {
     setBusy(true);
     setError(null);
     try {
-      const res = await apiFetch(`/api/watchlist/${id}`, {
-        method: "DELETE",
-      });
+      const res = await apiFetch(`/api/watchlist/${id}`, { method: "DELETE" });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         throw new Error(
@@ -214,11 +176,9 @@ export function HomeClient() {
 
   async function onGenerate() {
     if (generating || watchlistCount === 0) return;
-
     setGenerating(true);
     setError(null);
     setBriefText("");
-
     const ac = new AbortController();
     abortRef.current = ac;
 
@@ -228,7 +188,6 @@ export function HomeClient() {
         signal: ac.signal,
         body: JSON.stringify({}),
       });
-
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(
@@ -237,24 +196,23 @@ export function HomeClient() {
             : `Generate failed (status: ${res.status})`,
         );
       }
-
-      if(!res.body) throw new Error("No response body");
+      if (!res.body) throw new Error("No response body");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      while(true){
-        const {done, value} = await reader.read();
-        if(done) break;
-        const chunk = decoder.decode(value, {stream: true});
-        setBriefText((prev)=> prev + chunk);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        setBriefText((prev) => prev + decoder.decode(value, { stream: true }));
       }
       await loadHistory();
     } catch (err) {
-      if(err instanceof DOMException && err.name === "AbortError"){
+      if (err instanceof DOMException && err.name === "AbortError") {
         setError("Generating cancelled");
-      }
-      else{
-        setError(err instanceof Error ? err.message : "Failed to generate brief");
+      } else {
+        setError(
+          err instanceof Error ? err.message : "Failed to generate brief",
+        );
       }
     } finally {
       abortRef.current = null;
@@ -262,200 +220,72 @@ export function HomeClient() {
     }
   }
 
-  function onAbortGenerate(){
-    abortRef.current?.abort();
-  }
-
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-8">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">WatchBrief</h1>
-        <p className="mt-1 text-sm opacity-70">
-          Personal NSE watchlist. Not investment advice.
-        </p>
-      </header>
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="opacity-70">Search</span>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Filter symbols…"
-          className="rounded border px-3 py-2 text-sm"
-        />
-      </label>
-      {!loading && items.length === 0 ? (
-        <p className="text-sm opacity-60">
-          {debouncedQ
-            ? "No matches for this search."
-            : "No tickers yet. Add an NSE symbol."}
-        </p>
-      ) : null}
-      <form onSubmit={onAdd} className="flex gap-2">
-        <input
-          type="text"
-          value={symbolInput}
-          onChange={(e) => setSymbolInput(e.target.value)}
-          placeholder="e.g. RELIANCE or TCS.NS"
-          className="min-w-0 flex-1 rounded border px-3 py-2 font-mono text-sm"
-          disabled={busy || watchlistCount >= 10}
-          aria-label="NSE ticker symbol"
-        />
-
-        <button
-          type="submit"
-          disabled={busy || watchlistCount >= 10 || !symbolInput.trim()}
-          aria-label="Add to watchlist"
-        >
-          {busy ? "Adding…" : "Add"}
-        </button>
-      </form>
-      {watchlistCount >= 10 ? (
-        <p className="text-sm text-red-600" role="alert">
-          Watchlist limit is 10 tickers. Remove some to add more.
-        </p>
-      ) : null}
-
-      {error ? (
-        <p className="text-sm text-red-600" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <p className="text-sm opacity-60">
-        {loading
-          ? "Loading…"
-          : `${watchlistCount} ticker(s) · showing ${total} match(es)`}
-      </p>
-      <ul className="flex flex-col gap-2">
-        {items.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-center justify-between gap-3 border-b py-2"
-          >
-            <span className="font-mono text-sm">{item.symbol}</span>
-            <button
-              onClick={() => onDelete(item.id)}
-              disabled={busy}
-              aria-label="Delete from watchlist"
-            >
-              Delete
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <button
-          type="button"
-          onClick={(p) => setPage(Math.max(1, page - 1))}
-          disabled={page <= 1 || loading}
-          className="rounded border px-3 py-1 disabled:opacity-40"
-        >
-          Prev
-        </button>
-
-        <span className="opacity-70">
-          Page {page} of {pageCount}
-        </span>
-
-        <button
-          type="button"
-          disabled={page >= pageCount || loading}
-          onClick={() => setPage((p) => p + 1)}
-          className="rounded border px-3 py-1 disabled:opacity-40"
-        >
-          Next
-        </button>
-      </div>
-
-      <section className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={generating || watchlistCount === 0 || busy}
-            onClick={()=> void onGenerate()}
-            className="rounded border px-3 py-1 disabled:opacity-40"
-          >
-            {generating ? "Generating…" : "Generate Brief"}
-          </button>
-          <button
-            type="button"
-            disabled={!generating}
-            onClick={onAbortGenerate}
-            className="rounded border px-3 py-1 disabled:opacity-40"
-          >
-            Stop
-          </button>
+    <div className="min-h-full bg-paper">
+      <AppHeader />
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+        <div className="mb-8 max-w-2xl">
+          <h1 className="display text-3xl text-ink sm:text-4xl">
+            Research desk
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+            Personal NSE watchlist briefs. Not investment advice.
+          </p>
         </div>
-        {watchlistCount === 0 ? (
-          <p className="text-xs opacity-70">Add at least one ticker to generate.</p> 
-        ): 
-        (
-          <p className="text-xs opacity-70">
-            Uses your full watchlist ({watchlistCount}), not the current search page.
-          </p>
-        )}
 
-        {briefText? (
-        <BriefMarkdown text={briefText} />
-        ): null}
-      </section>
-
-      <section className="flex flex-col gap-3 border-t pt-6">
-        <h2 className="text-lg font-semibold">History</h2>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="opacity-70">Search briefs</span>
-          <input
-            value={historyQ}
-            onChange={(e) => setHistoryQ(e.target.value)}
-            placeholder="Symbols or text…"
-            className="rounded border px-3 py-2 text-sm"
-          />
-        </label>
-        <p className="text-sm opacity-60">
-          {historyLoading
-            ? "Loading history…"
-            : `${historyTotal} brief(s)`}
-        </p>
-        {!historyLoading && briefs.length === 0 ? (
-          <p className="text-sm opacity-60">
-            {debouncedHistoryQ
-              ? "No matching briefs."
-              : "No briefs yet. Generate one."}
-          </p>
+        {error ? (
+          <div
+            className="mb-6 rounded-[var(--radius-sm)] border border-danger/20 bg-danger-soft px-4 py-3 text-sm text-danger"
+            role="alert"
+          >
+            {error}
+          </div>
         ) : null}
-        <ul className="flex flex-col gap-4">
-          {briefs.map((row) => (
-            <li key={row.id} className="flex flex-col gap-2 rounded border p-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs opacity-70">
-                <span className="font-mono">{row.symbols}</span>
-                <span>{new Date(row.createdAt).toLocaleString()}</span>
-              </div>
-              <BriefMarkdown text={row.content} />
-            </li>
-          ))}
-        </ul>
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <button
-            type="button"
-            disabled={historyPage <= 1 || historyLoading}
-            onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-            className="rounded border px-3 py-1 disabled:opacity-40"
-          >
-            Prev
-          </button>
-          <span className="opacity-70">
-            Page {historyPage} of {historyPageCount}
-          </span>
-          <button
-            type="button"
-            disabled={historyPage >= historyPageCount || historyLoading}
-            onClick={() => setHistoryPage((p) => p + 1)}
-            className="rounded border px-3 py-1 disabled:opacity-40"
-          >
-            Next
-          </button>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+          <WatchlistPanel
+            q={q}
+            onQChange={setQ}
+            symbolInput={symbolInput}
+            onSymbolInputChange={setSymbolInput}
+            onAdd={onAdd}
+            onDelete={onDelete}
+            items={items}
+            loading={loading}
+            busy={busy}
+            watchlistCount={watchlistCount}
+            total={total}
+            page={page}
+            pageCount={pageCount}
+            onPrevPage={() => setPage((p) => Math.max(1, p - 1))}
+            onNextPage={() => setPage((p) => p + 1)}
+            debouncedQ={debouncedQ}
+          />
+
+          <div className="flex flex-col gap-6">
+            <GeneratePanel
+              watchlistCount={watchlistCount}
+              generating={generating}
+              busy={busy}
+              briefText={briefText}
+              onGenerate={() => void onGenerate()}
+              onAbort={() => abortRef.current?.abort()}
+            />
+            <HistoryPanel
+              historyQ={historyQ}
+              onHistoryQChange={setHistoryQ}
+              briefs={briefs}
+              historyLoading={historyLoading}
+              historyTotal={historyTotal}
+              historyPage={historyPage}
+              historyPageCount={historyPageCount}
+              debouncedHistoryQ={debouncedHistoryQ}
+              onPrevPage={() => setHistoryPage((p) => Math.max(1, p - 1))}
+              onNextPage={() => setHistoryPage((p) => p + 1)}
+            />
+          </div>
         </div>
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }
