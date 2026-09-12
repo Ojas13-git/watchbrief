@@ -1,7 +1,11 @@
 "use client";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Search01Icon } from "@hugeicons/core-free-icons";
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Search01Icon,
+} from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Surface } from "@/components/ui/surface";
@@ -11,41 +15,44 @@ import type { BriefRow } from "@/lib/types";
 type HistoryPanelProps = {
   historyQ: string;
   onHistoryQChange: (value: string) => void;
-  briefs: BriefRow[];
+  brief: BriefRow | null;
   historyLoading: boolean;
   historyTotal: number;
   historyPage: number;
   historyPageCount: number;
   debouncedHistoryQ: string;
-  onPrevPage: () => void;
-  onNextPage: () => void;
+  onPrev: () => void;
+  onNext: () => void;
 };
 
 export function HistoryPanel({
   historyQ,
   onHistoryQChange,
-  briefs,
+  brief,
   historyLoading,
   historyTotal,
   historyPage,
   historyPageCount,
   debouncedHistoryQ,
-  onPrevPage,
-  onNextPage,
+  onPrev,
+  onNext,
 }: HistoryPanelProps) {
   return (
     <Surface className="overflow-hidden">
-      <div className="border-b border-line px-5 py-4">
-        <h2 className="text-sm font-semibold tracking-tight text-ink">
-          History
-        </h2>
-        <p className="mt-1 text-xs text-ink-muted">
-          {historyLoading ? "Loading…" : `${historyTotal} brief(s)`}
-        </p>
-      </div>
-
-      <div className="space-y-4 px-5 py-4">
-        <div className="relative">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line px-5 py-4">
+        <div>
+          <h2 className="text-sm font-semibold tracking-tight text-ink">
+            Brief history
+          </h2>
+          <p className="mt-1 text-xs text-ink-muted">
+            {historyLoading
+              ? "Loading…"
+              : historyTotal === 0
+                ? "No briefs yet"
+                : `Brief ${historyPage} of ${historyTotal}`}
+          </p>
+        </div>
+        <div className="relative w-full max-w-xs sm:w-64">
           <HugeiconsIcon
             icon={Search01Icon}
             size={16}
@@ -60,54 +67,64 @@ export function HistoryPanel({
             aria-label="Search briefs"
           />
         </div>
+      </div>
 
-        {!historyLoading && briefs.length === 0 ? (
-          <p className="py-8 text-center text-sm text-ink-faint">
+      <div className="px-5 py-5">
+        {historyLoading && !brief ? (
+          <p className="py-16 text-center text-sm text-ink-faint">Loading…</p>
+        ) : !brief ? (
+          <p className="py-16 text-center text-sm text-ink-faint">
             {debouncedHistoryQ
               ? "No matching briefs."
-              : "No briefs yet. Generate one."}
+              : "No briefs yet. Generate one from the desk."}
           </p>
         ) : (
-          <ul className="flex flex-col gap-4">
-            {briefs.map((row) => (
-              <li
-                key={row.id}
-                className="rounded-[var(--radius-sm)] border border-line bg-paper p-4"
+          <article>
+            <header className="mb-5 flex flex-wrap items-baseline justify-between gap-2 border-b border-line pb-4">
+              <h3 className="font-mono text-sm font-semibold tracking-tight text-ink">
+                {brief.symbols}
+              </h3>
+              <time
+                className="text-xs text-ink-muted"
+                dateTime={brief.createdAt}
               >
-                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 text-xs text-ink-muted">
-                  <span className="font-mono font-medium text-ink">
-                    {row.symbols}
-                  </span>
-                  <time dateTime={row.createdAt}>
-                    {new Date(row.createdAt).toLocaleString()}
-                  </time>
-                </div>
-                <BriefMarkdown text={row.content} />
-              </li>
-            ))}
-          </ul>
+                {new Date(brief.createdAt).toLocaleString()}
+              </time>
+            </header>
+            <BriefMarkdown text={brief.content} />
+          </article>
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t border-line px-5 py-3">
+      <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
         <Button
           variant="secondary"
           size="sm"
-          disabled={historyPage <= 1 || historyLoading}
-          onClick={onPrevPage}
+          disabled={historyPage <= 1 || historyLoading || historyTotal === 0}
+          onClick={onPrev}
+          aria-label="Previous brief"
         >
-          Prev
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={16} strokeWidth={1.75} />
+          Previous
         </Button>
-        <span className="text-xs text-ink-muted">
-          Page {historyPage} / {historyPageCount}
+        <span className="text-xs tabular-nums text-ink-muted">
+          {historyTotal === 0
+            ? "—"
+            : `${historyPage} / ${historyPageCount}`}
         </span>
         <Button
           variant="secondary"
           size="sm"
-          disabled={historyPage >= historyPageCount || historyLoading}
-          onClick={onNextPage}
+          disabled={
+            historyPage >= historyPageCount ||
+            historyLoading ||
+            historyTotal === 0
+          }
+          onClick={onNext}
+          aria-label="Next brief"
         >
           Next
+          <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={1.75} />
         </Button>
       </div>
     </Surface>

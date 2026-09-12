@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { AiChat02Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
@@ -56,8 +57,21 @@ export function GeneratePanel({
         </div>
 
         {briefText ? (
-          <div className="max-h-[28rem] overflow-y-auto rounded-[var(--radius-sm)] border border-line bg-paper px-1 py-1">
-            <BriefMarkdown text={briefText} />
+          <div className="space-y-3">
+            <div className="max-h-[28rem] overflow-y-auto rounded-[var(--radius-sm)] border border-line bg-paper px-1 py-1">
+              <BriefMarkdown text={briefText} />
+            </div>
+            {!generating ? (
+              <p className="text-xs text-ink-muted">
+                Saved.{" "}
+                <Link
+                  href="/app/history"
+                  className="font-medium text-accent hover:text-accent-hover"
+                >
+                  Open in history
+                </Link>
+              </p>
+            ) : null}
           </div>
         ) : (
           <div className="rounded-[var(--radius-sm)] border border-dashed border-line-strong bg-paper px-4 py-10 text-center text-sm text-ink-faint">

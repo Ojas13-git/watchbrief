@@ -1,17 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useApiFetch } from "@/lib/use-api-fetch";
 import { AppHeader } from "@/components/app/app-header";
 import { WatchlistPanel } from "@/components/app/watchlist-panel";
 import { GeneratePanel } from "@/components/app/generate-panel";
-import { HistoryPanel } from "@/components/app/history-panel";
-import type {
-  BriefRow,
-  BriefsResponse,
-  WatchlistItem,
-  WatchlistResponse,
-} from "@/lib/types";
+import type { WatchlistItem, WatchlistResponse } from "@/lib/types";
 
 export function HomeClient() {
   const apiFetch = useApiFetch();
@@ -30,14 +25,6 @@ export function HomeClient() {
   const [busy, setBusy] = useState(false);
   const [briefText, setBriefText] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [historyQ, setHistoryQ] = useState("");
-  const [debouncedHistoryQ, setDebouncedHistoryQ] = useState("");
-  const [historyPage, setHistoryPage] = useState(1);
-  const [historyPageSize] = useState(5);
-  const [briefs, setBriefs] = useState<BriefRow[]>([]);
-  const [historyTotal, setHistoryTotal] = useState(0);
-  const [historyPageCount, setHistoryPageCount] = useState(1);
-  const [historyLoading, setHistoryLoading] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -48,46 +35,6 @@ export function HomeClient() {
     }, 500);
     return () => clearTimeout(t);
   }, [q]);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedHistoryQ(historyQ.trim());
-      setHistoryPage(1);
-    }, 500);
-    return () => clearTimeout(t);
-  }, [historyQ]);
-
-  const loadHistory = useCallback(async () => {
-    setHistoryLoading(true);
-    try {
-      const params = new URLSearchParams({
-        q: debouncedHistoryQ,
-        page: String(historyPage),
-        pageSize: String(historyPageSize),
-      });
-      const res = await apiFetch(`/api/briefs?${params.toString()}`);
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(
-          typeof body.error === "string" && body.error
-            ? body.error
-            : `Failed to load briefs (status: ${res.status})`,
-        );
-      }
-      const data = (await res.json()) as BriefsResponse;
-      setBriefs(data.briefs);
-      setHistoryTotal(data.total);
-      setHistoryPageCount(data.pageCount);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load briefs");
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [apiFetch, debouncedHistoryQ, historyPage, historyPageSize]);
-
-  useEffect(() => {
-    void loadHistory();
-  }, [debouncedHistoryQ, historyPage, historyPageSize]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -205,7 +152,6 @@ export function HomeClient() {
         if (done) break;
         setBriefText((prev) => prev + decoder.decode(value, { stream: true }));
       }
-      await loadHistory();
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setError("Generating cancelled");
@@ -224,13 +170,21 @@ export function HomeClient() {
     <div className="min-h-full bg-paper">
       <AppHeader />
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
-        <div className="mb-8 max-w-2xl">
-          <h1 className="display text-3xl text-ink sm:text-4xl">
-            Research desk
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-            Personal NSE watchlist briefs. Not investment advice.
-          </p>
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="max-w-2xl">
+            <h1 className="display text-3xl text-ink sm:text-4xl">
+              Research desk
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+              Personal NSE watchlist briefs. Not investment advice.
+            </p>
+          </div>
+          <Link
+            href="/app/history"
+            className="text-sm font-medium text-accent hover:text-accent-hover"
+          >
+            Open history →
+          </Link>
         </div>
 
         {error ? (
@@ -262,28 +216,14 @@ export function HomeClient() {
             debouncedQ={debouncedQ}
           />
 
-          <div className="flex flex-col gap-6">
-            <GeneratePanel
-              watchlistCount={watchlistCount}
-              generating={generating}
-              busy={busy}
-              briefText={briefText}
-              onGenerate={() => void onGenerate()}
-              onAbort={() => abortRef.current?.abort()}
-            />
-            <HistoryPanel
-              historyQ={historyQ}
-              onHistoryQChange={setHistoryQ}
-              briefs={briefs}
-              historyLoading={historyLoading}
-              historyTotal={historyTotal}
-              historyPage={historyPage}
-              historyPageCount={historyPageCount}
-              debouncedHistoryQ={debouncedHistoryQ}
-              onPrevPage={() => setHistoryPage((p) => Math.max(1, p - 1))}
-              onNextPage={() => setHistoryPage((p) => p + 1)}
-            />
-          </div>
+          <GeneratePanel
+            watchlistCount={watchlistCount}
+            generating={generating}
+            busy={busy}
+            briefText={briefText}
+            onGenerate={() => void onGenerate()}
+            onAbort={() => abortRef.current?.abort()}
+          />
         </div>
       </main>
     </div>

@@ -144,6 +144,15 @@ Postman collection and local environment live under `server/postman/`.
 - Model: `openai/gpt-oss-20b` via Groq
 - Client talks to Express only (`NEXT_PUBLIC_API_URL`); Next.js does not own the API
 
-## License
+## Deploy
 
-Private / personal project — not licensed for redistribution unless you add one.
+| Layer | Host |
+|-------|------|
+| Frontend (`client/`) | [Vercel](https://vercel.com) (Hobby / free) |
+| Backend (`server/`) | [Render](https://render.com) **Free** web service (preferred) or [Railway](https://railway.com) Free/trial |
+| Database | Neon (unchanged) |
+
+**Render Free:** HTTPS URL, Git deploy, sleeps after ~15 min idle (~1 min cold start).  
+**Railway Free:** trial credits then ~$1/mo — fine for demos; not enough for 24/7 without Hobby.
+
+See the practice plan Session 5 (E12–E14): deploy `server/` → set env + `prisma migrate deploy` → point Vercel `NEXT_PUBLIC_API_URL` at the API HTTPS URL → set `CORS_ORIGIN` → Clerk smoke test.
