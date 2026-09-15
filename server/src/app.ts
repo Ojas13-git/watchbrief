@@ -6,6 +6,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { watchlistRouter } from "./routes/watchlist.js";
 import { briefRouter } from "./routes/brief.js";
 import { briefsRouter } from "./routes/briefs.js";
+import { symbolsRouter } from "./routes/symbols.js";
 
 export function createApp() {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp() {
   app.use("/api/watchlist", watchlistRouter);
   app.use("/api/brief", briefRouter);
   app.use("/api/briefs", briefsRouter);
+  app.use("/api/symbols", symbolsRouter);
 
   app.use(errorHandler);
 
